@@ -1,22 +1,19 @@
-type Account @entity {
-  id: ID!
-}
- 
 type Record @entity {
   id: ID!
-  smartContractAddress: ID! @index
+  smartContractAddress: String! @index
   url: String!
   environment: Int!
   likes: Int!
   dislikes: Int!
-  submitter: Account! @index
+  submitter: String! @index
   enabled: Boolean!
   timestamp: DateTime!
-  block: BigInt!
+  block: Int!
 }
 
-type Rating @entity @index(fields: ["record", "user"], unique: true) {
-  record: Record!
-  user: Account!
+type Rating @entity {
+  id: ID!
+  recordId: String!
+  user: String!
   rating: Int!
 }

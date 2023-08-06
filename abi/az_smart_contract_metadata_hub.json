@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0xa933cf2d910db061858b9baaf112a4cfe40f99c2ff5991ceb206c69133eb596f",
+    "hash": "0xefdbc70d26ab192291412afb29a078fb739eeb87983e2a79b75104409e0a90c8",
     "language": "ink! 4.2.1",
     "compiler": "rustc 1.69.0",
     "build_info": {
@@ -16,9 +16,7 @@
   "contract": {
     "name": "az_smart_contract_metadata_hub",
     "version": "0.1.0",
-    "authors": [
-      "Steven Chang <steven.chang@btn.group>"
-    ]
+    "authors": ["Steven Chang <steven.chang@btn.group>"]
   },
   "spec": {
     "constructors": [
@@ -29,10 +27,7 @@
         "label": "new",
         "payable": false,
         "returnType": {
-          "displayName": [
-            "ink_primitives",
-            "ConstructorResult"
-          ],
+          "displayName": ["ink_primitives", "ConstructorResult"],
           "type": 8
         },
         "selector": "0x9bae9d5e"
@@ -41,40 +36,28 @@
     "docs": [],
     "environment": {
       "accountId": {
-        "displayName": [
-          "AccountId"
-        ],
+        "displayName": ["AccountId"],
         "type": 1
       },
       "balance": {
-        "displayName": [
-          "Balance"
-        ],
+        "displayName": ["Balance"],
         "type": 15
       },
       "blockNumber": {
-        "displayName": [
-          "BlockNumber"
-        ],
+        "displayName": ["BlockNumber"],
         "type": 0
       },
       "chainExtension": {
-        "displayName": [
-          "ChainExtension"
-        ],
+        "displayName": ["ChainExtension"],
         "type": 18
       },
       "hash": {
-        "displayName": [
-          "Hash"
-        ],
+        "displayName": ["Hash"],
         "type": 16
       },
       "maxEventTopics": 4,
       "timestamp": {
-        "displayName": [
-          "Timestamp"
-        ],
+        "displayName": ["Timestamp"],
         "type": 17
       }
     },
@@ -86,9 +69,7 @@
             "indexed": false,
             "label": "id",
             "type": {
-              "displayName": [
-                "u32"
-              ],
+              "displayName": ["u32"],
               "type": 0
             }
           },
@@ -97,9 +78,7 @@
             "indexed": false,
             "label": "smart_contract_address",
             "type": {
-              "displayName": [
-                "AccountId"
-              ],
+              "displayName": ["AccountId"],
               "type": 1
             }
           },
@@ -108,10 +87,17 @@
             "indexed": false,
             "label": "url",
             "type": {
-              "displayName": [
-                "String"
-              ],
+              "displayName": ["String"],
               "type": 4
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "environment",
+            "type": {
+              "displayName": ["u8"],
+              "type": 3
             }
           },
           {
@@ -119,9 +105,7 @@
             "indexed": false,
             "label": "submitter",
             "type": {
-              "displayName": [
-                "AccountId"
-              ],
+              "displayName": ["AccountId"],
               "type": 1
             }
           }
@@ -136,9 +120,7 @@
             "indexed": false,
             "label": "id",
             "type": {
-              "displayName": [
-                "u32"
-              ],
+              "displayName": ["u32"],
               "type": 0
             }
           },
@@ -147,9 +129,7 @@
             "indexed": false,
             "label": "enabled",
             "type": {
-              "displayName": [
-                "bool"
-              ],
+              "displayName": ["bool"],
               "type": 6
             }
           }
@@ -164,9 +144,7 @@
             "indexed": false,
             "label": "id",
             "type": {
-              "displayName": [
-                "u32"
-              ],
+              "displayName": ["u32"],
               "type": 0
             }
           },
@@ -175,9 +153,7 @@
             "indexed": false,
             "label": "previous_user_rating",
             "type": {
-              "displayName": [
-                "i8"
-              ],
+              "displayName": ["i8"],
               "type": 7
             }
           },
@@ -186,9 +162,7 @@
             "indexed": false,
             "label": "new_user_rating",
             "type": {
-              "displayName": [
-                "i8"
-              ],
+              "displayName": ["i8"],
               "type": 7
             }
           },
@@ -197,9 +171,7 @@
             "indexed": false,
             "label": "user",
             "type": {
-              "displayName": [
-                "AccountId"
-              ],
+              "displayName": ["AccountId"],
               "type": 1
             }
           }
@@ -209,10 +181,7 @@
       }
     ],
     "lang_error": {
-      "displayName": [
-        "ink",
-        "LangError"
-      ],
+      "displayName": ["ink", "LangError"],
       "type": 10
     },
     "messages": [
@@ -221,9 +190,7 @@
           {
             "label": "id",
             "type": {
-              "displayName": [
-                "u32"
-              ],
+              "displayName": ["u32"],
               "type": 0
             }
           }
@@ -234,10 +201,7 @@
         "mutates": false,
         "payable": false,
         "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
+          "displayName": ["ink", "MessageResult"],
           "type": 11
         },
         "selector": "0xf1b0ace3"
@@ -247,27 +211,21 @@
           {
             "label": "smart_contract_address",
             "type": {
-              "displayName": [
-                "AccountId"
-              ],
+              "displayName": ["AccountId"],
               "type": 1
             }
           },
           {
             "label": "url",
             "type": {
-              "displayName": [
-                "String"
-              ],
+              "displayName": ["String"],
               "type": 4
             }
           },
           {
             "label": "environment",
             "type": {
-              "displayName": [
-                "u8"
-              ],
+              "displayName": ["u8"],
               "type": 3
             }
           }
@@ -278,10 +236,7 @@
         "mutates": true,
         "payable": false,
         "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
+          "displayName": ["ink", "MessageResult"],
           "type": 11
         },
         "selector": "0xab700a1b"
@@ -291,18 +246,14 @@
           {
             "label": "id",
             "type": {
-              "displayName": [
-                "u32"
-              ],
+              "displayName": ["u32"],
               "type": 0
             }
           },
           {
             "label": "new_user_rating",
             "type": {
-              "displayName": [
-                "i8"
-              ],
+              "displayName": ["i8"],
               "type": 7
             }
           }
@@ -313,10 +264,7 @@
         "mutates": true,
         "payable": false,
         "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
+          "displayName": ["ink", "MessageResult"],
           "type": 11
         },
         "selector": "0xef3a6cba"
@@ -326,18 +274,14 @@
           {
             "label": "id",
             "type": {
-              "displayName": [
-                "u32"
-              ],
+              "displayName": ["u32"],
               "type": 0
             }
           },
           {
             "label": "enabled",
             "type": {
-              "displayName": [
-                "bool"
-              ],
+              "displayName": ["bool"],
               "type": 6
             }
           }
@@ -348,10 +292,7 @@
         "mutates": true,
         "payable": false,
         "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
+          "displayName": ["ink", "MessageResult"],
           "type": 11
         },
         "selector": "0xd7d87ac4"
@@ -512,11 +453,7 @@
             ]
           }
         },
-        "path": [
-          "ink_primitives",
-          "types",
-          "AccountId"
-        ]
+        "path": ["ink_primitives", "types", "AccountId"]
       }
     },
     {
@@ -607,9 +544,7 @@
             "type": 10
           }
         ],
-        "path": [
-          "Result"
-        ]
+        "path": ["Result"]
       }
     },
     {
@@ -633,10 +568,7 @@
             ]
           }
         },
-        "path": [
-          "ink_primitives",
-          "LangError"
-        ]
+        "path": ["ink_primitives", "LangError"]
       }
     },
     {
@@ -676,9 +608,7 @@
             "type": 10
           }
         ],
-        "path": [
-          "Result"
-        ]
+        "path": ["Result"]
       }
     },
     {
@@ -718,9 +648,7 @@
             "type": 14
           }
         ],
-        "path": [
-          "Result"
-        ]
+        "path": ["Result"]
       }
     },
     {
@@ -850,11 +778,7 @@
             ]
           }
         },
-        "path": [
-          "ink_primitives",
-          "types",
-          "Hash"
-        ]
+        "path": ["ink_primitives", "types", "Hash"]
       }
     },
     {
@@ -871,11 +795,7 @@
         "def": {
           "variant": {}
         },
-        "path": [
-          "ink_env",
-          "types",
-          "NoChainExtension"
-        ]
+        "path": ["ink_env", "types", "NoChainExtension"]
       }
     }
   ],
