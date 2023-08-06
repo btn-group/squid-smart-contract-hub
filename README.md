@@ -1,6 +1,6 @@
 # WASM squid template (FireSquid edition)
 
-This is a squid template for indexing Ink!-based contracts, supported e.g. by the Astar and Shibuya network. 
+This is a squid template for indexing Ink!-based contracts, supported e.g. by the Astar and Shibuya network.
 This template indexes a sample ERC-20 Ink!-based smart contract token transfers over the [Shibuya network](https://docs.astar.network/docs/quickstart/endpoints) and serves them via graphql API.
 
 For more details, inspect [Squid SDK docs](https://docs.subsquid.io/), including the [dedicated page on Ink! support](https://docs.subsquid.io/substrate-indexing/wasm-support) and the [Ink! indexing tutorial](https://docs.subsquid.io/tutorials/create-a-wasm-processing-squid/).
@@ -27,7 +27,7 @@ sqd up
 sqd process
 
 # 5. The command above will block the terminal
-#    being busy with fetching the chain data, 
+#    being busy with fetching the chain data,
 #    transforming and storing it in the target database.
 #
 #    To start the graphql server open the separate terminal
@@ -63,6 +63,7 @@ sqd up
 ## replace any old schemas with a new one made from the entities
 sqd migration:generate
 ```
+
 See [docs on database migrations](https://docs.subsquid.io/basics/db-migrations) for more details.
 
 ### 4. Import ABI contract and generate interfaces to decode events
@@ -72,16 +73,16 @@ It is necessary to import the respective ABI definition to decode WASM logs. For
 To generate a type-safe facade class to decode EVM logs, use [`squid-ink-typegen(1)`](https://github.com/subsquid/squid-sdk/tree/master/substrate/ink-typegen):
 
 ```bash
-npm squid-ink-typegen --abi abi/az_smart_contract_metadata_hub.json --output src/abi/az_smart_contract_metadata_hub.ts
+npx squid-ink-typegen --abi abi/az_smart_contract_metadata_hub.json --output src/abi/az_smart_contract_metadata_hub.ts
 ```
 
 ## Project conventions
 
 Squid tools assume a certain [project layout](https://docs.subsquid.io/basics/squid-structure):
 
-* All compiled js files must reside in `lib` and all TypeScript sources in `src`.
-The layout of `lib` must reflect `src`.
-* All TypeORM classes must be exported by `src/model/index.ts` (`lib/model` module).
-* Database schema must be defined in `schema.graphql`.
-* Database migrations must reside in `db/migrations` and must be plain js files.
-* `sqd(1)` and `squid-*(1)` executables consult `.env` file for environment variables.
+- All compiled js files must reside in `lib` and all TypeScript sources in `src`.
+  The layout of `lib` must reflect `src`.
+- All TypeORM classes must be exported by `src/model/index.ts` (`lib/model` module).
+- Database schema must be defined in `schema.graphql`.
+- Database migrations must reside in `db/migrations` and must be plain js files.
+- `sqd(1)` and `squid-*(1)` executables consult `.env` file for environment variables.
