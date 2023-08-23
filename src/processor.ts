@@ -8,17 +8,17 @@ import {
 } from "@subsquid/substrate-processor";
 import { Store, TypeormDatabase } from "@subsquid/typeorm-store";
 import { In } from "typeorm";
-import * as azSmartContractMetaDataHub from "./abi/az_smart_contract_metadata_hub";
-import { Rating, Record } from "./model/generated";
+import * as simpleDex from "./abi/simple_dex";
+import { SimpleDexState, SwapPair, Token } from "./model/generated";
 
 const CONTRACT_ADDRESS_SS58 =
-  "5En4kRj71Vt1D3cQFaNebc35Eo9dWqSeeEALemyjVnGkxEuw";
+  "5DGxNnuvZaCRcEQPQaJDFsqPRBvouH4cNZSpE6ERX7VJBnHn";
 const CONTRACT_ADDRESS = toHex(ss58.decode(CONTRACT_ADDRESS_SS58).bytes);
 const SS58_PREFIX = ss58.decode(CONTRACT_ADDRESS_SS58).prefix;
 
 const processor = new SubstrateBatchProcessor()
   .setDataSource({
-    archive: lookupArchive("aleph-zero-testnet", { release: "FireSquid" }),
+    archive: lookupArchive("aleph-zero", { release: "FireSquid" }),
   })
   .addContractsContractEmitted(CONTRACT_ADDRESS, {
     data: {
@@ -29,188 +29,195 @@ const processor = new SubstrateBatchProcessor()
 type Item = BatchProcessorItem<typeof processor>;
 type Ctx = BatchContext<Store, Item>;
 
-// 1. I need to search by smart_contract_address & environment
-// 2. I need to be able to get the user rating during the search
 processor.run(new TypeormDatabase(), async (ctx) => {
-  const records = extractCreateRecords(ctx);
-  const rateEvent = extractRateEvents(ctx);
+  // 1. Find or initialize SimpleDexState
+  let simpleDexState = await ctx.store.get(SimpleDexState, CONTRACT_ADDRESS_SS58);
+  if (!simpleDexState) {
+    simpleDexState = new SimpleDexState({
+      id: CONTRACT_ADDRESS_SS58,
+      swapFeePercentage: 0,
+      halted: false
+    })
+  }
 
-  const formattedRecords = records.map((record) => {
-    const formattedRecord = new Record({
-      id: record.id,
-      smartContractAddress: record.smart_contract_address,
-      url: record.url,
-      environment: record.environment,
-      likes: 1,
-      dislikes: 0,
-      submitter: record.submitter,
-      enabled: true,
-      timestamp: record.timestamp,
-      block: record.block,
+  // 2. Extract SwapPairs
+  const swapPairs = extractSwapPairs(ctx);
+
+  // 3. Extract Halt state
+  const haltStateInArray = extractHaltState(ctx);
+  if (haltStateInArray.length) {
+    simpleDexState.halted = haltStateInArray[0];
+  }
+
+  // 4. Extract swap fee percentage
+  // There is no event for this
+
+  // 5. Extract tokens
+  const tokens = extractTokens(ctx);
+
+  // 6. Process SwapPairs
+  const formattedSwapPairs = swapPairs.map((swapPair) => {
+    const formattedSwapPair = new SwapPair({
+      id: swapPair.id,
+      simpleDexStateId: CONTRACT_ADDRESS_SS58,
+      from: swapPair.from,
+      to: swapPair.to,
+      enabled: swapPair.enabled
     });
 
-    return formattedRecord;
+    return formattedSwapPair;
   });
 
-  await ctx.store.insert(formattedRecords);
+  await ctx.store.insert(formattedSwapPairs);
 
-  formattedRecords.forEach(async (record) => {
-    await ctx.store.save(
-      new Rating({
-        id: `${record.id}-${record.submitter}`,
-        recordId: record.id,
-        user: record.submitter,
-        rating: 1,
-      }),
-    );
+  // 7. Process tokens
+  const formattedTokens = tokens.map((token) => {
+    const formattedToken = new Token({
+      id: token.id,
+      simpleDexStateId: CONTRACT_ADDRESS_SS58,
+      balanceUpdatedTimestamp: token.balance_updated_timestamp,
+      balanceUpdatedBlock: token.balance_updated_block
+    });
+
+    return formattedToken;
   });
 
-  // 2. Handle toggleEvents
-  const toggleEvents = extractToggleEvents(ctx);
-  toggleEvents.forEach(async (toggleEvent) => {
-    // https://docs.subsquid.io/basics/store/postgres/typeorm-store/
-    let record = await ctx.store.get(Record, toggleEvent.record_id);
-    if (record) {
-      record.enabled = toggleEvent.enabled;
-      await ctx.store.save(record);
-    }
-  });
+  await ctx.store.insert(formattedTokens);
 
-  // 3. Handle rateEvents
-  rateEvent.forEach(async (rateEvent) => {
-    // Update record
-    let record = await ctx.store.get(Record, rateEvent.record_id);
-    if (record) {
-      if (rateEvent.new_user_rating == -1) {
-        record.dislikes += 1;
-      }
-      if (rateEvent.new_user_rating == 1) {
-        record.likes += 1;
-      }
-      if (rateEvent.previous_user_rating == -1) {
-        record.dislikes -= 1;
-      }
-      if (rateEvent.previous_user_rating == 1) {
-        record.likes -= 1;
-      }
-      await ctx.store.save(record);
-
-      // Create or update rating
-      let rating = await ctx.store.findOneBy(Rating, {
-        recordId: record.id,
-        user: rateEvent.user,
-      });
-      if (!rating) {
-        rating = new Rating({
-          id: `${record.id}-${record.submitter}`,
-          recordId: record.id,
-          user: rateEvent.user,
-          rating: rateEvent.new_user_rating,
-        });
-      } else {
-        rating.rating = rateEvent.new_user_rating;
-      }
-      await ctx.store.save(rating);
-    }
-  });
+  // 8. Save SimpleDexState
+  await ctx.store.save(simpleDexState);
 });
 
-interface createRecord {
+interface swapPair {
   id: string;
-  smart_contract_address: string;
-  url: string;
-  submitter: string;
-  environment: number;
-  block: number;
-  timestamp: Date;
-}
-
-interface rateEvent {
-  record_id: string;
-  previous_user_rating: number;
-  new_user_rating: number;
-  user: string;
-}
-
-interface toggleEvent {
-  record_id: string;
+  from: string;
+  to: string;
   enabled: boolean;
 }
 
-function extractCreateRecords(ctx: Ctx): createRecord[] {
-  const records: createRecord[] = [];
+interface token {
+  id: string;
+  balance_updated_block: number;
+  balance_updated_timestamp: Date;
+}
+
+function extractSwapPairs(ctx: Ctx): swapPair[] {
+  const swapPairIds = [];
+  const swapPairsInObject: {[key: string]: swapPair} = {};
+  const swapPairs: swapPair[] = [];
   for (const block of ctx.blocks) {
     for (const item of block.items) {
       if (
         item.name === "Contracts.ContractEmitted" &&
         item.event.args.contract === CONTRACT_ADDRESS
       ) {
-        const event = azSmartContractMetaDataHub.decodeEvent(
+        const event = simpleDex.decodeEvent(
           item.event.args.data,
         );
-        if (event.__kind === "Create") {
-          records.push({
-            id: String(event.id),
-            smart_contract_address: ss58
+        if (event.__kind === "SwapPairAdded" || event.__kind === "SwapPairRemoved") {
+          let id = `${ss58
               .codec(SS58_PREFIX)
-              .encode(event.smartContractAddress),
-            url: event.url,
-            submitter: ss58.codec(SS58_PREFIX).encode(event.submitter),
-            environment: event.environment,
-            block: block.header.height,
-            timestamp: new Date(block.header.timestamp),
-          });
+              .encode(event.pair.from)}-${ss58
+              .codec(SS58_PREFIX)
+              .encode(event.pair.to)}`;
+          if (!swapPairsInObject[id]) {
+            swapPairIds.push(id)
+          }
+          swapPairsInObject[id] = {
+            id: `${ss58
+              .codec(SS58_PREFIX)
+              .encode(event.pair.from)}-${ss58
+              .codec(SS58_PREFIX)
+              .encode(event.pair.to)}`,
+            from: ss58
+              .codec(SS58_PREFIX)
+              .encode(event.pair.from),
+            to: ss58
+              .codec(SS58_PREFIX)
+              .encode(event.pair.to),
+            enabled: event.__kind === "SwapPairAdded",
+          };
         }
       }
     }
   }
-  return records;
+  for (const id of swapPairIds) {
+    swapPairs.push(swapPairsInObject[id])
+  }
+  return swapPairs;
 }
 
-function extractRateEvents(ctx: Ctx): rateEvent[] {
-  const rateEvents: rateEvent[] = [];
+function extractHaltState(ctx: Ctx): boolean[] {
+  const haltState: boolean[] = [];
   for (const block of ctx.blocks) {
     for (const item of block.items) {
       if (
         item.name === "Contracts.ContractEmitted" &&
         item.event.args.contract === CONTRACT_ADDRESS
       ) {
-        const event = azSmartContractMetaDataHub.decodeEvent(
+        const event = simpleDex.decodeEvent(
           item.event.args.data,
         );
-        if (event.__kind === "Rate") {
-          rateEvents.push({
-            record_id: String(event.id),
-            previous_user_rating: event.previousUserRating,
-            new_user_rating: event.newUserRating,
-            user: ss58.codec(SS58_PREFIX).encode(event.user),
-          });
+        if (event.__kind === "Halted" || event.__kind === "Resumed") {
+          haltState[0] = event.__kind === "Halted"
         }
       }
     }
   }
-  return rateEvents;
+  return haltState;
 }
 
-function extractToggleEvents(ctx: Ctx): toggleEvent[] {
-  const toggleEvents: toggleEvent[] = [];
+function extractTokens(ctx: Ctx): token[] {
+  const tokenIds = [];
+  const tokensInObject: {[key: string]: token} = {};
+  const tokens: token[] = [];
+
   for (const block of ctx.blocks) {
     for (const item of block.items) {
       if (
         item.name === "Contracts.ContractEmitted" &&
         item.event.args.contract === CONTRACT_ADDRESS
       ) {
-        const event = azSmartContractMetaDataHub.decodeEvent(
+        const event = simpleDex.decodeEvent(
           item.event.args.data,
         );
-        if (event.__kind === "Toggle") {
-          toggleEvents.push({
-            record_id: String(event.id),
-            enabled: event.enabled,
-          });
+        let id;
+        if (event.__kind === "Swapped") {
+          id = ss58.codec(SS58_PREFIX).encode(event.tokenIn);
+          if (!tokensInObject[id]) {
+            tokenIds.push(id)
+          }
+          tokensInObject[id] = {
+            id,
+            balance_updated_block: block.header.height,
+            balance_updated_timestamp: new Date(block.header.timestamp),
+          };
+          id = ss58.codec(SS58_PREFIX).encode(event.tokenOut);
+          if (!tokensInObject[id]) {
+            tokenIds.push(id)
+          }
+          tokensInObject[id] = {
+            id,
+            balance_updated_block: block.header.height,
+            balance_updated_timestamp: new Date(block.header.timestamp),
+          };
+        }
+        if (event.__kind === "Withdrawn") {
+          id = ss58.codec(SS58_PREFIX).encode(event.token);
+          if (!tokensInObject[id]) {
+            tokenIds.push(id)
+          }
+          tokensInObject[id] = {
+            id: ss58.codec(SS58_PREFIX).encode(event.token),
+            balance_updated_block: block.header.height,
+            balance_updated_timestamp: new Date(block.header.timestamp),
+          };
         }
       }
     }
   }
-  return toggleEvents;
+  for (const id of tokenIds) {
+    tokens.push(tokensInObject[id])
+  }
+  return tokens;
 }

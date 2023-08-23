@@ -1,19 +1,20 @@
-type Record @entity {
+type SimpleDexState @entity {
   id: ID!
-  smartContractAddress: String! @index
-  url: String!
-  environment: Int!
-  likes: Int!
-  dislikes: Int!
-  submitter: String! @index
-  enabled: Boolean!
-  timestamp: DateTime!
-  block: Int!
+  swapFeePercentage: Int!
+  halted: Boolean!
 }
 
-type Rating @entity {
+type SwapPair @entity {
   id: ID!
-  recordId: String!
-  user: String!
-  rating: Int!
+  simpleDexStateId: String! @index
+  from: String!
+  to: String!
+  enabled: Boolean
+}
+
+type Token @entity {
+  id: ID!
+  simpleDexStateId: String! @index
+  balanceUpdatedTimestamp: DateTime!
+  balanceUpdatedBlock: Int!
 }

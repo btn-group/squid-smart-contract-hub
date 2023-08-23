@@ -1,11 +1,10 @@
-# WASM squid template (FireSquid edition)
+# Subsquid: Button Game Simple Dex
 
-This is a squid template for indexing Ink!-based contracts, supported e.g. by the Astar and Shibuya network.
-This template indexes a sample ERC-20 Ink!-based smart contract token transfers over the [Shibuya network](https://docs.astar.network/docs/quickstart/endpoints) and serves them via graphql API.
+This indexes the Aleph Zero smart contract "Simple Dex" and serves via graphsql API.
 
-For more details, inspect [Squid SDK docs](https://docs.subsquid.io/), including the [dedicated page on Ink! support](https://docs.subsquid.io/substrate-indexing/wasm-support) and the [Ink! indexing tutorial](https://docs.subsquid.io/tutorials/create-a-wasm-processing-squid/).
+## Dependencies
 
-Dependencies: Node.js, Docker.
+Node.js, Docker.
 
 ## Quickstart
 
@@ -13,20 +12,16 @@ Dependencies: Node.js, Docker.
 # 0. Install @subsquid/cli a.k.a. the sqd command globally
 npm i -g @subsquid/cli
 
-# 1. Retrieve the template
-sqd init my_squid_name -t frontier-evm
-cd my_squid_name
-
-# 2. Install dependencies
+# 1. Install dependencies
 npm ci
 
-# 3. Start a Postgres database container and detach
+# 2. Start a Postgres database container and detach
 sqd up
 
-# 4. Start the processor
+# 3. Start the processor
 sqd process
 
-# 5. The command above will block the terminal
+# 4. The command above will block the terminal
 #    being busy with fetching the chain data,
 #    transforming and storing it in the target database.
 #
@@ -68,12 +63,12 @@ See [docs on database migrations](https://docs.subsquid.io/basics/db-migrations)
 
 ### 4. Import ABI contract and generate interfaces to decode events
 
-It is necessary to import the respective ABI definition to decode WASM logs. For this template we used standard ERC20 interface, see [`abi/erc20.json`](abi/erc20.json).
+It is necessary to import the respective ABI definition to decode WASM logs. For this template we used [`abi/simple_dex.json.json`](abi/simple_dex.json.json).
 
 To generate a type-safe facade class to decode EVM logs, use [`squid-ink-typegen(1)`](https://github.com/subsquid/squid-sdk/tree/master/substrate/ink-typegen):
 
 ```bash
-npx squid-ink-typegen --abi abi/az_smart_contract_metadata_hub.json --output src/abi/az_smart_contract_metadata_hub.ts
+npx squid-ink-typegen --abi abi/simple_dex.json --output src/abi/simple_dex.ts
 ```
 
 ## Project conventions
@@ -86,3 +81,9 @@ Squid tools assume a certain [project layout](https://docs.subsquid.io/basics/sq
 - Database schema must be defined in `schema.graphql`.
 - Database migrations must reside in `db/migrations` and must be plain js files.
 - `sqd(1)` and `squid-*(1)` executables consult `.env` file for environment variables.
+
+## References
+
+- [Squid SDK docs](https://docs.subsquid.io/)
+- [dedicated page on Ink! support](https://docs.subsquid.io/substrate-indexing/wasm-support)
+- [Ink! indexing tutorial](https://docs.subsquid.io/tutorials/create-a-wasm-processing-squid/)
