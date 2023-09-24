@@ -8,7 +8,7 @@ import {
 } from "@subsquid/substrate-processor";
 import { Store, TypeormDatabase } from "@subsquid/typeorm-store";
 import { In } from "typeorm";
-import * as azSmartContractMetaDataHub from "./abi/az_smart_contract_metadata_hub";
+import * as azSmartContractHub from "./abi/az_smart_contract_hub";
 import { Rating, Record } from "./model/generated";
 
 const CONTRACT_ADDRESS_SS58 =
@@ -145,7 +145,7 @@ function extractCreateRecords(ctx: Ctx): createRecord[] {
         item.name === "Contracts.ContractEmitted" &&
         item.event.args.contract === CONTRACT_ADDRESS
       ) {
-        const event = azSmartContractMetaDataHub.decodeEvent(
+        const event = azSmartContractHub.decodeEvent(
           item.event.args.data,
         );
         if (event.__kind === "Create") {
@@ -175,7 +175,7 @@ function extractRateEvents(ctx: Ctx): rateEvent[] {
         item.name === "Contracts.ContractEmitted" &&
         item.event.args.contract === CONTRACT_ADDRESS
       ) {
-        const event = azSmartContractMetaDataHub.decodeEvent(
+        const event = azSmartContractHub.decodeEvent(
           item.event.args.data,
         );
         if (event.__kind === "Rate") {
@@ -200,7 +200,7 @@ function extractToggleEvents(ctx: Ctx): toggleEvent[] {
         item.name === "Contracts.ContractEmitted" &&
         item.event.args.contract === CONTRACT_ADDRESS
       ) {
-        const event = azSmartContractMetaDataHub.decodeEvent(
+        const event = azSmartContractHub.decodeEvent(
           item.event.args.data,
         );
         if (event.__kind === "Toggle") {

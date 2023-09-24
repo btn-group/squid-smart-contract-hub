@@ -73,7 +73,7 @@ It is necessary to import the respective ABI definition to decode WASM logs. For
 To generate a type-safe facade class to decode EVM logs, use [`squid-ink-typegen(1)`](https://github.com/subsquid/squid-sdk/tree/master/substrate/ink-typegen):
 
 ```bash
-npx squid-ink-typegen --abi abi/az_smart_contract_metadata_hub.json --output src/abi/az_smart_contract_metadata_hub.ts
+npx squid-ink-typegen --abi abi/az_smart_contract_hub.json --output src/abi/az_smart_contract_hub.ts
 ```
 
 ## Project conventions

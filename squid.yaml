@@ -1,5 +1,5 @@
 manifestVersion: subsquid.io/v0.1
-name: smart-contract-metadata-hub
+name: smart-contract-hub
 version: 1
 description: "Ink! contract indexing squid  "
 build:
