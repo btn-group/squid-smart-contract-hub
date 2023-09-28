@@ -1,19 +1,12 @@
-type Record @entity {
+type Group @entity {
   id: ID!
-  smartContractAddress: String! @index
-  url: String!
-  environment: Int!
-  likes: Int!
-  dislikes: Int!
-  submitter: String! @index
+  name: String!
   enabled: Boolean!
-  timestamp: DateTime!
-  block: Int!
 }
 
-type Rating @entity {
+type GroupUser @entity {
   id: ID!
-  recordId: String!
-  user: String!
-  rating: Int!
+  group: Group!
+  accountId: String! @index
+  role: String!
 }
