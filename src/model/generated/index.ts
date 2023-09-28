@@ -1,2 +1,2 @@
-export * from "./record.model";
-export * from "./rating.model";
+export * from "./group.model"
+export * from "./groupUser.model"

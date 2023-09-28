@@ -7,12 +7,11 @@ import {
   SubstrateBatchProcessor,
 } from "@subsquid/substrate-processor";
 import { Store, TypeormDatabase } from "@subsquid/typeorm-store";
-import { In } from "typeorm";
-import * as azSmartContractHub from "./abi/az_smart_contract_hub";
-import { Rating, Record } from "./model/generated";
+import * as azGroups from "./abi/az_groups";
+import { Group, GroupUser } from "./model/generated";
 
 const CONTRACT_ADDRESS_SS58 =
-  "5En4kRj71Vt1D3cQFaNebc35Eo9dWqSeeEALemyjVnGkxEuw";
+  "5EHMGoUrkSHCBqLYmAMbzBeXJwZzeGLVXgpWw585j8ciyrte";
 const CONTRACT_ADDRESS = toHex(ss58.decode(CONTRACT_ADDRESS_SS58).bytes);
 const SS58_PREFIX = ss58.decode(CONTRACT_ADDRESS_SS58).prefix;
 
@@ -29,188 +28,183 @@ const processor = new SubstrateBatchProcessor()
 type Item = BatchProcessorItem<typeof processor>;
 type Ctx = BatchContext<Store, Item>;
 
-// 1. I need to search by smart_contract_address & environment
-// 2. I need to be able to get the user rating during the search
+// 1. The aim is to get groups for an account
 processor.run(new TypeormDatabase(), async (ctx) => {
-  const records = extractCreateRecords(ctx);
-  const rateEvent = extractRateEvents(ctx);
+  const groups = extractGroups(ctx);
+  const groupsUpdate = extractGroupsUpdate(ctx);
 
-  const formattedRecords = records.map((record) => {
-    const formattedRecord = new Record({
-      id: record.id,
-      smartContractAddress: record.smart_contract_address,
-      url: record.url,
-      environment: record.environment,
-      likes: 1,
-      dislikes: 0,
-      submitter: record.submitter,
+  // 1. Create new groups
+  const newGroups = groups.map((group) => {
+    return new Group({
+      id: group.id,
+      name: group.name,
       enabled: true,
-      timestamp: record.timestamp,
-      block: record.block,
     });
+  });
+  await ctx.store.insert(newGroups);
 
-    return formattedRecord;
+  // 2. Update groups
+  groupsUpdate.forEach(async (group) => {
+    await ctx.store.save(
+      new Group({ id: group.id, name: group.name, enabled: group.enabled }),
+    );
   });
 
-  await ctx.store.insert(formattedRecords);
+  // 3. Create new group users
+  const groupUsers = extractGroupUsers(ctx);
+  const newGroupUsers = groupUsers.map((groupUser) => {
+    return new GroupUser({
+      id: groupUser.id,
+      groupId: groupUser.group_id,
+      accountId: groupUser.account_id,
+      role: groupUser.role,
+    });
+  });
+  await ctx.store.insert(newGroupUsers);
 
-  formattedRecords.forEach(async (record) => {
+  // 4. Update group users
+  const groupUsersUpdate = extractGroupUsersUpdate(ctx);
+  groupUsersUpdate.forEach(async (groupUser) => {
     await ctx.store.save(
-      new Rating({
-        id: `${record.id}-${record.submitter}`,
-        recordId: record.id,
-        user: record.submitter,
-        rating: 1,
+      new GroupUser({
+        id: groupUser.id,
+        groupId: groupUser.group_id,
+        accountId: groupUser.account_id,
+        role: groupUser.role,
       }),
     );
   });
 
-  // 2. Handle toggleEvents
-  const toggleEvents = extractToggleEvents(ctx);
-  toggleEvents.forEach(async (toggleEvent) => {
-    // https://docs.subsquid.io/basics/store/postgres/typeorm-store/
-    let record = await ctx.store.get(Record, toggleEvent.record_id);
-    if (record) {
-      record.enabled = toggleEvent.enabled;
-      await ctx.store.save(record);
-    }
-  });
-
-  // 3. Handle rateEvents
-  rateEvent.forEach(async (rateEvent) => {
-    // Update record
-    let record = await ctx.store.get(Record, rateEvent.record_id);
-    if (record) {
-      if (rateEvent.new_user_rating == -1) {
-        record.dislikes += 1;
-      }
-      if (rateEvent.new_user_rating == 1) {
-        record.likes += 1;
-      }
-      if (rateEvent.previous_user_rating == -1) {
-        record.dislikes -= 1;
-      }
-      if (rateEvent.previous_user_rating == 1) {
-        record.likes -= 1;
-      }
-      await ctx.store.save(record);
-
-      // Create or update rating
-      let rating = await ctx.store.findOneBy(Rating, {
-        recordId: record.id,
-        user: rateEvent.user,
-      });
-      if (!rating) {
-        rating = new Rating({
-          id: `${record.id}-${record.submitter}`,
-          recordId: record.id,
-          user: rateEvent.user,
-          rating: rateEvent.new_user_rating,
-        });
-      } else {
-        rating.rating = rateEvent.new_user_rating;
-      }
-      await ctx.store.save(rating);
-    }
-  });
+  // 5. Delete group users
+  const groupUsersDestroy = extractGroupUsersDestroy(ctx);
+  if (groupUsersDestroy.length) {
+    await ctx.store.remove(GroupUser, groupUsersDestroy);
+  }
 });
 
-interface createRecord {
+interface groupEvent {
   id: string;
-  smart_contract_address: string;
-  url: string;
-  submitter: string;
-  environment: number;
-  block: number;
-  timestamp: Date;
-}
-
-interface rateEvent {
-  record_id: string;
-  previous_user_rating: number;
-  new_user_rating: number;
-  user: string;
-}
-
-interface toggleEvent {
-  record_id: string;
+  name: string;
   enabled: boolean;
 }
 
-function extractCreateRecords(ctx: Ctx): createRecord[] {
-  const records: createRecord[] = [];
+interface groupUserEvent {
+  id: string;
+  group_id: string;
+  account_id: string;
+  role: string;
+}
+
+function extractGroups(ctx: Ctx): groupEvent[] {
+  const groups: groupEvent[] = [];
   for (const block of ctx.blocks) {
     for (const item of block.items) {
       if (
         item.name === "Contracts.ContractEmitted" &&
         item.event.args.contract === CONTRACT_ADDRESS
       ) {
-        const event = azSmartContractHub.decodeEvent(
-          item.event.args.data,
-        );
+        const event = azGroups.decodeEvent(item.event.args.data);
         if (event.__kind === "Create") {
-          records.push({
+          groups.push({
             id: String(event.id),
-            smart_contract_address: ss58
-              .codec(SS58_PREFIX)
-              .encode(event.smartContractAddress),
-            url: event.url,
-            submitter: ss58.codec(SS58_PREFIX).encode(event.submitter),
-            environment: event.environment,
-            block: block.header.height,
-            timestamp: new Date(block.header.timestamp),
+            name: event.name,
+            enabled: true,
           });
         }
       }
     }
   }
-  return records;
+  return groups;
 }
 
-function extractRateEvents(ctx: Ctx): rateEvent[] {
-  const rateEvents: rateEvent[] = [];
+function extractGroupsUpdate(ctx: Ctx): groupEvent[] {
+  const groups: groupEvent[] = [];
   for (const block of ctx.blocks) {
     for (const item of block.items) {
       if (
         item.name === "Contracts.ContractEmitted" &&
         item.event.args.contract === CONTRACT_ADDRESS
       ) {
-        const event = azSmartContractHub.decodeEvent(
-          item.event.args.data,
-        );
-        if (event.__kind === "Rate") {
-          rateEvents.push({
-            record_id: String(event.id),
-            previous_user_rating: event.previousUserRating,
-            new_user_rating: event.newUserRating,
-            user: ss58.codec(SS58_PREFIX).encode(event.user),
-          });
-        }
-      }
-    }
-  }
-  return rateEvents;
-}
-
-function extractToggleEvents(ctx: Ctx): toggleEvent[] {
-  const toggleEvents: toggleEvent[] = [];
-  for (const block of ctx.blocks) {
-    for (const item of block.items) {
-      if (
-        item.name === "Contracts.ContractEmitted" &&
-        item.event.args.contract === CONTRACT_ADDRESS
-      ) {
-        const event = azSmartContractHub.decodeEvent(
-          item.event.args.data,
-        );
-        if (event.__kind === "Toggle") {
-          toggleEvents.push({
-            record_id: String(event.id),
+        const event = azGroups.decodeEvent(item.event.args.data);
+        if (event.__kind === "Update") {
+          groups.push({
+            id: String(event.id),
+            name: event.name,
             enabled: event.enabled,
           });
         }
       }
     }
   }
-  return toggleEvents;
+  return groups;
+}
+
+function extractGroupUsers(ctx: Ctx): groupUserEvent[] {
+  const groupUsers: groupUserEvent[] = [];
+  for (const block of ctx.blocks) {
+    for (const item of block.items) {
+      if (
+        item.name === "Contracts.ContractEmitted" &&
+        item.event.args.contract === CONTRACT_ADDRESS
+      ) {
+        const event = azGroups.decodeEvent(item.event.args.data);
+        if (event.__kind === "GroupUserCreate") {
+          groupUsers.push({
+            id: `${event.groupId}-${ss58
+              .codec(SS58_PREFIX)
+              .encode(event.user)}`,
+            group_id: String(event.groupId),
+            account_id: ss58.codec(SS58_PREFIX).encode(event.user),
+            role: String(event.role),
+          });
+        }
+      }
+    }
+  }
+  return groupUsers;
+}
+
+function extractGroupUsersUpdate(ctx: Ctx): groupUserEvent[] {
+  const groupUsers: groupUserEvent[] = [];
+  for (const block of ctx.blocks) {
+    for (const item of block.items) {
+      if (
+        item.name === "Contracts.ContractEmitted" &&
+        item.event.args.contract === CONTRACT_ADDRESS
+      ) {
+        const event = azGroups.decodeEvent(item.event.args.data);
+        if (event.__kind === "GroupUserUpdate") {
+          groupUsers.push({
+            id: `${event.groupId}-${ss58
+              .codec(SS58_PREFIX)
+              .encode(event.user)}`,
+            group_id: String(event.groupId),
+            account_id: ss58.codec(SS58_PREFIX).encode(event.user),
+            role: String(event.role),
+          });
+        }
+      }
+    }
+  }
+  return groupUsers;
+}
+
+function extractGroupUsersDestroy(ctx: Ctx): string[] {
+  const groupUserIds: string[] = [];
+  for (const block of ctx.blocks) {
+    for (const item of block.items) {
+      if (
+        item.name === "Contracts.ContractEmitted" &&
+        item.event.args.contract === CONTRACT_ADDRESS
+      ) {
+        const event = azGroups.decodeEvent(item.event.args.data);
+        if (event.__kind === "GroupUserDestroy") {
+          groupUserIds.push(
+            `${event.groupId}-${ss58.codec(SS58_PREFIX).encode(event.user)}`,
+          );
+        }
+      }
+    }
+  }
+  return groupUserIds;
 }
