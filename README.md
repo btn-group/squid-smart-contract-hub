@@ -83,8 +83,10 @@ yarn prettier --write src/processor.ts
 
 ## Deployment
 
+Update squid.yaml and deploy as per [this](https://docs.subsquid.io/deploy-squid/quickstart/).
+
 ```
-sqd deploy --org btngroup ../squid_smart_contract_hub
+sqd deploy --org btngroup ../squid-smart-contract-hub
 ```
 
 ## References

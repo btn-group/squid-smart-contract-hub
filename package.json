@@ -1,5 +1,5 @@
 {
-  "name": "squid_smart_contract_hub",
+  "name": "squid-smart-contract-hub",
   "private": true,
   "scripts": {
     "build": "rm -rf lib && tsc",
