@@ -6,7 +6,7 @@ type Group @entity {
 
 type GroupUser @entity {
   id: ID!
-  groupId: String! @index
+  group: Group!
   accountId: String! @index
   role: String!
 }
