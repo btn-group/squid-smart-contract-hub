@@ -1,9 +1,6 @@
 # Squid Smart Contract Hub (FireSquid edition)
 
-This is a squid template for indexing Ink!-based contracts, supported e.g. by the Astar and Shibuya network.
-This template indexes a sample ERC-20 Ink!-based smart contract token transfers over the [Shibuya network](https://docs.astar.network/docs/quickstart/endpoints) and serves them via graphql API.
-
-For more details, inspect [Squid SDK docs](https://docs.subsquid.io/), including the [dedicated page on Ink! support](https://docs.subsquid.io/substrate-indexing/wasm-support) and the [Ink! indexing tutorial](https://docs.subsquid.io/tutorials/create-a-wasm-processing-squid/).
+This squid tracks the events of the Groups smart contract on Aleph Zero and serves them via graphql API.
 
 Dependencies: Node.js, Docker.
 
@@ -78,25 +75,21 @@ To generate a type-safe facade class to decode EVM logs, use [`squid-ink-typegen
 npx squid-ink-typegen --abi abi/az_groups.json --output src/abi/az_groups.ts
 ```
 
-## Project conventions
-
-Squid tools assume a certain [project layout](https://docs.subsquid.io/basics/squid-structure):
-
-- All compiled js files must reside in `lib` and all TypeScript sources in `src`.
-  The layout of `lib` must reflect `src`.
-- All TypeORM classes must be exported by `src/model/index.ts` (`lib/model` module).
-- Database schema must be defined in `schema.graphql`.
-- Database migrations must reside in `db/migrations` and must be plain js files.
-- `sqd(1)` and `squid-*(1)` executables consult `.env` file for environment variables.
-
 ## Checking code
 
 ```
 yarn prettier --write src/processor.ts
 ```
 
+## Deployment
+
+```
+sqd deploy --org btngroup ../squid_smart_contract_hub
+```
+
 ## References
 
 1. https://docs.subsquid.io/firesquid/tutorials/create-a-wasm-processing-squid/
 2. https://docs.subsquid.io/firesquid/substrate-indexing/
-3. https://docs.subsquid.io/store/postgres/schema-file/entity-relations/
+3. [Entity relations](https://docs.subsquid.io/store/postgres/schema-file/entity-relations/)
+4. [Project conventions](https://docs.subsquid.io/basics/squid-structure)
