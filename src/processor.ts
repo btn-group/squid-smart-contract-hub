@@ -157,7 +157,7 @@ async function extractGroupUsers(ctx: Ctx): Promise<groupUserEvent[]> {
                 .encode(event.user)}`,
               group,
               account_id: ss58.codec(SS58_PREFIX).encode(event.user),
-              role: String(event.role),
+              role: event.role.__kind,
             });
           }
         }
@@ -185,7 +185,7 @@ async function extractGroupUsersUpdate(ctx: Ctx): Promise<groupUserEvent[]> {
                 .encode(event.user)}`,
               group,
               account_id: ss58.codec(SS58_PREFIX).encode(event.user),
-              role: String(event.role),
+              role: event.role.__kind,
             });
           }
         }
