@@ -1,5 +1,5 @@
 {
-  "name": "kusama-balances",
+  "name": "squid_smart_contract_hub",
   "private": true,
   "scripts": {
     "build": "rm -rf lib && tsc",
