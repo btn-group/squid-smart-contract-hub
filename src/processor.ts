@@ -51,11 +51,11 @@ processor.run(new TypeormDatabase(), async (ctx) => {
   });
 
   // 3. Create new group users
-  const groupUsers = extractGroupUsers(ctx);
+  const groupUsers = await extractGroupUsers(ctx);
   const newGroupUsers = groupUsers.map((groupUser) => {
     return new GroupUser({
       id: groupUser.id,
-      groupId: groupUser.group_id,
+      group: groupUser.group,
       accountId: groupUser.account_id,
       role: groupUser.role,
     });
@@ -63,12 +63,12 @@ processor.run(new TypeormDatabase(), async (ctx) => {
   await ctx.store.insert(newGroupUsers);
 
   // 4. Update group users
-  const groupUsersUpdate = extractGroupUsersUpdate(ctx);
+  const groupUsersUpdate = await extractGroupUsersUpdate(ctx);
   groupUsersUpdate.forEach(async (groupUser) => {
     await ctx.store.save(
       new GroupUser({
         id: groupUser.id,
-        groupId: groupUser.group_id,
+        group: groupUser.group,
         accountId: groupUser.account_id,
         role: groupUser.role,
       }),
@@ -90,7 +90,7 @@ interface groupEvent {
 
 interface groupUserEvent {
   id: string;
-  group_id: string;
+  group: Group;
   account_id: string;
   role: string;
 }
@@ -139,7 +139,7 @@ function extractGroupsUpdate(ctx: Ctx): groupEvent[] {
   return groups;
 }
 
-function extractGroupUsers(ctx: Ctx): groupUserEvent[] {
+async function extractGroupUsers(ctx: Ctx): Promise<groupUserEvent[]> {
   const groupUsers: groupUserEvent[] = [];
   for (const block of ctx.blocks) {
     for (const item of block.items) {
@@ -149,14 +149,17 @@ function extractGroupUsers(ctx: Ctx): groupUserEvent[] {
       ) {
         const event = azGroups.decodeEvent(item.event.args.data);
         if (event.__kind === "GroupUserCreate") {
-          groupUsers.push({
-            id: `${event.groupId}-${ss58
-              .codec(SS58_PREFIX)
-              .encode(event.user)}`,
-            group_id: String(event.groupId),
-            account_id: ss58.codec(SS58_PREFIX).encode(event.user),
-            role: String(event.role),
-          });
+          let group = await ctx.store.get(Group, String(event.groupId));
+          if (group) {
+            groupUsers.push({
+              id: `${event.groupId}-${ss58
+                .codec(SS58_PREFIX)
+                .encode(event.user)}`,
+              group,
+              account_id: ss58.codec(SS58_PREFIX).encode(event.user),
+              role: String(event.role),
+            });
+          }
         }
       }
     }
@@ -164,7 +167,7 @@ function extractGroupUsers(ctx: Ctx): groupUserEvent[] {
   return groupUsers;
 }
 
-function extractGroupUsersUpdate(ctx: Ctx): groupUserEvent[] {
+async function extractGroupUsersUpdate(ctx: Ctx): Promise<groupUserEvent[]> {
   const groupUsers: groupUserEvent[] = [];
   for (const block of ctx.blocks) {
     for (const item of block.items) {
@@ -174,14 +177,17 @@ function extractGroupUsersUpdate(ctx: Ctx): groupUserEvent[] {
       ) {
         const event = azGroups.decodeEvent(item.event.args.data);
         if (event.__kind === "GroupUserUpdate") {
-          groupUsers.push({
-            id: `${event.groupId}-${ss58
-              .codec(SS58_PREFIX)
-              .encode(event.user)}`,
-            group_id: String(event.groupId),
-            account_id: ss58.codec(SS58_PREFIX).encode(event.user),
-            role: String(event.role),
-          });
+          let group = await ctx.store.get(Group, String(event.groupId));
+          if (group) {
+            groupUsers.push({
+              id: `${event.groupId}-${ss58
+                .codec(SS58_PREFIX)
+                .encode(event.user)}`,
+              group,
+              account_id: ss58.codec(SS58_PREFIX).encode(event.user),
+              role: String(event.role),
+            });
+          }
         }
       }
     }

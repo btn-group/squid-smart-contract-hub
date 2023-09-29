@@ -1,4 +1,4 @@
-# WASM squid template (FireSquid edition)
+# Squid Smart Contract Hub (FireSquid edition)
 
 This is a squid template for indexing Ink!-based contracts, supported e.g. by the Astar and Shibuya network.
 This template indexes a sample ERC-20 Ink!-based smart contract token transfers over the [Shibuya network](https://docs.astar.network/docs/quickstart/endpoints) and serves them via graphql API.
@@ -33,6 +33,8 @@ sqd process
 #    To start the graphql server open the separate terminal
 #    and run
 sqd serve
+
+# 6. Access via http://localhost:4350/graphql
 ```
 
 ## Dev flow
@@ -86,3 +88,15 @@ Squid tools assume a certain [project layout](https://docs.subsquid.io/basics/sq
 - Database schema must be defined in `schema.graphql`.
 - Database migrations must reside in `db/migrations` and must be plain js files.
 - `sqd(1)` and `squid-*(1)` executables consult `.env` file for environment variables.
+
+## Checking code
+
+```
+yarn prettier --write src/processor.ts
+```
+
+## References
+
+1. https://docs.subsquid.io/firesquid/tutorials/create-a-wasm-processing-squid/
+2. https://docs.subsquid.io/firesquid/substrate-indexing/
+3. https://docs.subsquid.io/store/postgres/schema-file/entity-relations/

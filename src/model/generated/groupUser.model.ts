@@ -1,4 +1,5 @@
-import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_, Index as Index_} from "typeorm"
+import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_, ManyToOne as ManyToOne_, Index as Index_} from "typeorm"
+import {Group} from "./group.model"
 
 @Entity_()
 export class GroupUser {
@@ -10,8 +11,8 @@ export class GroupUser {
     id!: string
 
     @Index_()
-    @Column_("text", {nullable: false})
-    groupId!: string
+    @ManyToOne_(() => Group, {nullable: true})
+    group!: Group
 
     @Index_()
     @Column_("text", {nullable: false})
