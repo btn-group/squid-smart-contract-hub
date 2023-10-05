@@ -73,6 +73,7 @@ To generate a type-safe facade class to decode EVM logs, use [`squid-ink-typegen
 
 ```bash
 npx squid-ink-typegen --abi abi/az_groups.json --output src/abi/az_groups.ts
+npx squid-ink-typegen --abi abi/az_smart_contract_hub.json --output src/abi/az_smart_contract_hub.ts
 ```
 
 ## Checking code
@@ -95,3 +96,4 @@ sqd deploy --org btngroup ../squid-smart-contract-hub
 2. https://docs.subsquid.io/firesquid/substrate-indexing/
 3. [Entity relations](https://docs.subsquid.io/store/postgres/schema-file/entity-relations/)
 4. [Project conventions](https://docs.subsquid.io/basics/squid-structure)
+5. [Graphql JSON body converter]https://datafetcher.com/graphql-json-body-converter
