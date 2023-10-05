@@ -1,1 +1,1 @@
-export * from "./generated";
+export { Group, GroupUser } from "./generated";

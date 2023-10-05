@@ -149,7 +149,7 @@ async function extractGroupUsers(ctx: Ctx): Promise<groupUserEvent[]> {
       ) {
         const event = azGroups.decodeEvent(item.event.args.data);
         if (event.__kind === "GroupUserCreate") {
-          let group = await ctx.store.get(Group, String(event.groupId));
+          const group = await ctx.store.get(Group, String(event.groupId));
           if (group) {
             groupUsers.push({
               id: `${event.groupId}-${ss58
@@ -177,7 +177,7 @@ async function extractGroupUsersUpdate(ctx: Ctx): Promise<groupUserEvent[]> {
       ) {
         const event = azGroups.decodeEvent(item.event.args.data);
         if (event.__kind === "GroupUserUpdate") {
-          let group = await ctx.store.get(Group, String(event.groupId));
+          const group = await ctx.store.get(Group, String(event.groupId));
           if (group) {
             groupUsers.push({
               id: `${event.groupId}-${ss58

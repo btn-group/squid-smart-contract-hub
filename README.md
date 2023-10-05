@@ -1,37 +1,47 @@
 # Squid Smart Contract Hub (FireSquid edition)
 
-This squid tracks the events of the Groups smart contract on Aleph Zero and serves them via graphql API.
+This squid tracks the events of the Groups and Smart Contract Hub smart contracts on Aleph Zero and serves them via graphql API.
 
-Dependencies: Node.js, Docker.
+## Getting Started
+### Prerequisites
 
-## Quickstart
-
-```bash
-# 0. Install @subsquid/cli a.k.a. the sqd command globally
+* Node.js
+* Docker
+* @subsquid/cli
+```
 npm i -g @subsquid/cli
+```
 
-# 1. Retrieve the template
-sqd init my_squid_name -t frontier-evm
-cd my_squid_name
+### Checking code
 
-# 2. Install dependencies
+```zsh
+cargo checkmate
+cargo sort
+```
+
+## Running locally
+```bash
+# 1. Install dependencies
 npm ci
 
-# 3. Start a Postgres database container and detach
+# 2. Start a Postgres database container and detach
 sqd up
 
-# 4. Start the processor
+# 3. Start the processor
 sqd process
 
-# 5. The command above will block the terminal
-#    being busy with fetching the chain data,
-#    transforming and storing it in the target database.
-#
-#    To start the graphql server open the separate terminal
-#    and run
+# 4. Start the graphql server in a new tab
 sqd serve
 
-# 6. Access via http://localhost:4350/graphql
+# 5. Access via http://localhost:4350/graphql
+```
+
+## Deployment
+
+Update squid.yaml and deploy as per [this](https://docs.subsquid.io/deploy-squid/quickstart/).
+
+```
+sqd deploy --org btngroup ../squid-smart-contract-hub
 ```
 
 ## Dev flow
@@ -67,10 +77,6 @@ See [docs on database migrations](https://docs.subsquid.io/basics/db-migrations)
 
 ### 4. Import ABI contract and generate interfaces to decode events
 
-It is necessary to import the respective ABI definition to decode WASM logs. For this template we used standard ERC20 interface, see [`abi/erc20.json`](abi/erc20.json).
-
-To generate a type-safe facade class to decode EVM logs, use [`squid-ink-typegen(1)`](https://github.com/subsquid/squid-sdk/tree/master/substrate/ink-typegen):
-
 ```bash
 npx squid-ink-typegen --abi abi/az_groups.json --output src/abi/az_groups.ts
 npx squid-ink-typegen --abi abi/az_smart_contract_hub.json --output src/abi/az_smart_contract_hub.ts
@@ -79,15 +85,7 @@ npx squid-ink-typegen --abi abi/az_smart_contract_hub.json --output src/abi/az_s
 ## Checking code
 
 ```
-yarn prettier --write src/processor.ts
-```
-
-## Deployment
-
-Update squid.yaml and deploy as per [this](https://docs.subsquid.io/deploy-squid/quickstart/).
-
-```
-sqd deploy --org btngroup ../squid-smart-contract-hub
+npm run lint
 ```
 
 ## References
