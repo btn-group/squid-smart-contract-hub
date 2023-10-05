@@ -44,11 +44,11 @@ processor.run(new TypeormDatabase(), async (ctx) => {
   await ctx.store.insert(newGroups);
 
   // 2. Update groups
-  groupsUpdate.forEach(async (group) => {
+  for (const group of groupsUpdate) {
     await ctx.store.save(
       new Group({ id: group.id, name: group.name, enabled: group.enabled }),
     );
-  });
+  }
 
   // 3. Create new group users
   const groupUsers = await extractGroupUsers(ctx);
@@ -64,7 +64,7 @@ processor.run(new TypeormDatabase(), async (ctx) => {
 
   // 4. Update group users
   const groupUsersUpdate = await extractGroupUsersUpdate(ctx);
-  groupUsersUpdate.forEach(async (groupUser) => {
+  for (const groupUser of groupUsersUpdate) {
     await ctx.store.save(
       new GroupUser({
         id: groupUser.id,
@@ -73,7 +73,7 @@ processor.run(new TypeormDatabase(), async (ctx) => {
         role: groupUser.role,
       }),
     );
-  });
+  };
 
   // 5. Delete group users
   const groupUsersDestroy = extractGroupUsersDestroy(ctx);
@@ -82,21 +82,21 @@ processor.run(new TypeormDatabase(), async (ctx) => {
   }
 });
 
-interface groupEvent {
+interface GroupEvent {
   id: string;
   name: string;
   enabled: boolean;
 }
 
-interface groupUserEvent {
+interface GroupUserEvent {
   id: string;
   group: Group;
   account_id: string;
   role: string;
 }
 
-function extractGroups(ctx: Ctx): groupEvent[] {
-  const groups: groupEvent[] = [];
+function extractGroups(ctx: Ctx): GroupEvent[] {
+  const groups: GroupEvent[] = [];
   for (const block of ctx.blocks) {
     for (const item of block.items) {
       if (
@@ -117,8 +117,8 @@ function extractGroups(ctx: Ctx): groupEvent[] {
   return groups;
 }
 
-function extractGroupsUpdate(ctx: Ctx): groupEvent[] {
-  const groups: groupEvent[] = [];
+function extractGroupsUpdate(ctx: Ctx): GroupEvent[] {
+  const groups: GroupEvent[] = [];
   for (const block of ctx.blocks) {
     for (const item of block.items) {
       if (
@@ -139,8 +139,8 @@ function extractGroupsUpdate(ctx: Ctx): groupEvent[] {
   return groups;
 }
 
-async function extractGroupUsers(ctx: Ctx): Promise<groupUserEvent[]> {
-  const groupUsers: groupUserEvent[] = [];
+async function extractGroupUsers(ctx: Ctx): Promise<GroupUserEvent[]> {
+  const groupUsers: GroupUserEvent[] = [];
   for (const block of ctx.blocks) {
     for (const item of block.items) {
       if (
@@ -167,8 +167,8 @@ async function extractGroupUsers(ctx: Ctx): Promise<groupUserEvent[]> {
   return groupUsers;
 }
 
-async function extractGroupUsersUpdate(ctx: Ctx): Promise<groupUserEvent[]> {
-  const groupUsers: groupUserEvent[] = [];
+async function extractGroupUsersUpdate(ctx: Ctx): Promise<GroupUserEvent[]> {
+  const groupUsers: GroupUserEvent[] = [];
   for (const block of ctx.blocks) {
     for (const item of block.items) {
       if (
