@@ -8,18 +8,22 @@ import {
 } from "@subsquid/substrate-processor";
 import { Store, TypeormDatabase } from "@subsquid/typeorm-store";
 import * as azGroups from "./abi/az_groups";
-import { Group, GroupUser } from "./model/generated";
+import * as azSmartContractHub from "./abi/az_smart_contract_hub";
+import { Group, GroupUser, SmartContract } from "./model/generated";
 
-const CONTRACT_ADDRESS_SS58 =
+const GROUPS_CONTRACT_ADDRESS_SS58 =
   "5EHMGoUrkSHCBqLYmAMbzBeXJwZzeGLVXgpWw585j8ciyrte";
-const CONTRACT_ADDRESS = toHex(ss58.decode(CONTRACT_ADDRESS_SS58).bytes);
-const SS58_PREFIX = ss58.decode(CONTRACT_ADDRESS_SS58).prefix;
+const GROUPS_CONTRACT_ADDRESS = toHex(ss58.decode(GROUPS_CONTRACT_ADDRESS_SS58).bytes);
+const SMART_CONTRACT_HUB_CONTRACT_ADDRESS_SS58 =
+  "5DTcTXqXTFr7vWR8BEvt4uzLWchfrpvBsCooBdxwaQQmD5cR";
+const SMART_CONTRACT_HUB_CONTRACT_ADDRESS = toHex(ss58.decode(SMART_CONTRACT_HUB_CONTRACT_ADDRESS_SS58).bytes);
+const SS58_PREFIX = ss58.decode(GROUPS_CONTRACT_ADDRESS_SS58).prefix;
 
 const processor = new SubstrateBatchProcessor()
   .setDataSource({
     archive: lookupArchive("aleph-zero-testnet", { release: "FireSquid" }),
   })
-  .addContractsContractEmitted(CONTRACT_ADDRESS, {
+  .addContractsContractEmitted(GROUPS_CONTRACT_ADDRESS, {
     data: {
       event: { args: true },
     },
@@ -32,6 +36,8 @@ type Ctx = BatchContext<Store, Item>;
 processor.run(new TypeormDatabase(), async (ctx) => {
   const groups = extractGroups(ctx);
   const groupsUpdate = extractGroupsUpdate(ctx);
+  const smartContracts = await extractSmartContracts(ctx);
+  const smartContractsUpdate = await extractSmartContractsUpdate(ctx);
 
   // 1. Create new groups
   const newGroups = groups.map((group) => {
@@ -56,7 +62,7 @@ processor.run(new TypeormDatabase(), async (ctx) => {
     return new GroupUser({
       id: groupUser.id,
       group: groupUser.group,
-      accountId: groupUser.account_id,
+      accountId: groupUser.accountId,
       role: groupUser.role,
     });
   });
@@ -69,7 +75,7 @@ processor.run(new TypeormDatabase(), async (ctx) => {
       new GroupUser({
         id: groupUser.id,
         group: groupUser.group,
-        accountId: groupUser.account_id,
+        accountId: groupUser.accountId,
         role: groupUser.role,
       }),
     );
@@ -80,6 +86,43 @@ processor.run(new TypeormDatabase(), async (ctx) => {
   if (groupUsersDestroy.length) {
     await ctx.store.remove(GroupUser, groupUsersDestroy);
   }
+
+  // 6. Create new smart contracts
+  const newSmartContracts = smartContracts.map((smartContract) => {
+    return new SmartContract({
+      id: smartContract.id,
+      chain: smartContract.chain,
+      caller: smartContract.caller,
+      enabled: true,
+      azeroId: smartContract.azeroId,
+      abiUrl: smartContract.abiUrl,
+      contractUrl: smartContract.contractUrl,
+      wasmUrl: smartContract.wasmUrl,
+      auditUrl: smartContract.auditUrl,
+      group: smartContract.group,
+      projectName: smartContract.projectName,
+      projectWebsite: smartContract.projectWebsite,
+      github: smartContract.github,
+    });
+  });
+  await ctx.store.insert(newSmartContracts);
+
+  // 7. Update smart contracts
+  for (const smartContractUpdate of smartContractsUpdate) {
+    const smartContract = await ctx.store.get(SmartContract, String(smartContractUpdate.id));
+    if (smartContract) {
+      smartContract.enabled = smartContractUpdate.enabled;
+      smartContract.azeroId = smartContractUpdate.azeroId;
+      smartContract.auditUrl = smartContractUpdate.auditUrl;
+      smartContract.group = smartContractUpdate.group;
+      smartContract.projectName = smartContractUpdate.projectName;
+      smartContract.projectWebsite = smartContractUpdate.projectWebsite;
+      smartContract.github = smartContractUpdate.github;
+      await ctx.store.save(
+        smartContract
+      );
+    }
+  };
 });
 
 interface GroupEvent {
@@ -91,8 +134,35 @@ interface GroupEvent {
 interface GroupUserEvent {
   id: string;
   group: Group;
-  account_id: string;
+  accountId: string;
   role: string;
+}
+
+interface SmartContractCreateEvent {
+  id: string,
+  address: string,
+  chain: number,
+  caller: string,
+  azeroId: string,
+  abiUrl: string,
+  contractUrl?: string,
+  wasmUrl?: string,
+  auditUrl?: string,
+  group?: Group,
+  projectName?: string,
+  projectWebsite?: string,
+  github?: string,
+}
+
+interface SmartContractUpdate {
+  id: string,
+  enabled: boolean,
+  azeroId: string,
+  auditUrl?: string,
+  group?: Group,
+  projectName?: string,
+  projectWebsite?: string,
+  github?: string,
 }
 
 function extractGroups(ctx: Ctx): GroupEvent[] {
@@ -101,7 +171,7 @@ function extractGroups(ctx: Ctx): GroupEvent[] {
     for (const item of block.items) {
       if (
         item.name === "Contracts.ContractEmitted" &&
-        item.event.args.contract === CONTRACT_ADDRESS
+        item.event.args.contract === GROUPS_CONTRACT_ADDRESS
       ) {
         const event = azGroups.decodeEvent(item.event.args.data);
         if (event.__kind === "Create") {
@@ -123,7 +193,7 @@ function extractGroupsUpdate(ctx: Ctx): GroupEvent[] {
     for (const item of block.items) {
       if (
         item.name === "Contracts.ContractEmitted" &&
-        item.event.args.contract === CONTRACT_ADDRESS
+        item.event.args.contract === GROUPS_CONTRACT_ADDRESS
       ) {
         const event = azGroups.decodeEvent(item.event.args.data);
         if (event.__kind === "Update") {
@@ -145,7 +215,7 @@ async function extractGroupUsers(ctx: Ctx): Promise<GroupUserEvent[]> {
     for (const item of block.items) {
       if (
         item.name === "Contracts.ContractEmitted" &&
-        item.event.args.contract === CONTRACT_ADDRESS
+        item.event.args.contract === GROUPS_CONTRACT_ADDRESS
       ) {
         const event = azGroups.decodeEvent(item.event.args.data);
         if (event.__kind === "GroupUserCreate") {
@@ -156,7 +226,7 @@ async function extractGroupUsers(ctx: Ctx): Promise<GroupUserEvent[]> {
                 .codec(SS58_PREFIX)
                 .encode(event.user)}`,
               group,
-              account_id: ss58.codec(SS58_PREFIX).encode(event.user),
+              accountId: ss58.codec(SS58_PREFIX).encode(event.user),
               role: event.role.__kind,
             });
           }
@@ -173,7 +243,7 @@ async function extractGroupUsersUpdate(ctx: Ctx): Promise<GroupUserEvent[]> {
     for (const item of block.items) {
       if (
         item.name === "Contracts.ContractEmitted" &&
-        item.event.args.contract === CONTRACT_ADDRESS
+        item.event.args.contract === GROUPS_CONTRACT_ADDRESS
       ) {
         const event = azGroups.decodeEvent(item.event.args.data);
         if (event.__kind === "GroupUserUpdate") {
@@ -184,7 +254,7 @@ async function extractGroupUsersUpdate(ctx: Ctx): Promise<GroupUserEvent[]> {
                 .codec(SS58_PREFIX)
                 .encode(event.user)}`,
               group,
-              account_id: ss58.codec(SS58_PREFIX).encode(event.user),
+              accountId: ss58.codec(SS58_PREFIX).encode(event.user),
               role: event.role.__kind,
             });
           }
@@ -201,7 +271,7 @@ function extractGroupUsersDestroy(ctx: Ctx): string[] {
     for (const item of block.items) {
       if (
         item.name === "Contracts.ContractEmitted" &&
-        item.event.args.contract === CONTRACT_ADDRESS
+        item.event.args.contract === GROUPS_CONTRACT_ADDRESS
       ) {
         const event = azGroups.decodeEvent(item.event.args.data);
         if (event.__kind === "GroupUserDestroy") {
@@ -213,4 +283,65 @@ function extractGroupUsersDestroy(ctx: Ctx): string[] {
     }
   }
   return groupUserIds;
+}
+
+async function extractSmartContracts(ctx: Ctx): Promise<SmartContractCreateEvent[]> {
+  const smartContracts: SmartContractCreateEvent[] = [];
+  for (const block of ctx.blocks) {
+    for (const item of block.items) {
+      if (
+        item.name === "Contracts.ContractEmitted" &&
+        item.event.args.contract === SMART_CONTRACT_HUB_CONTRACT_ADDRESS
+      ) {
+        const event = azSmartContractHub.decodeEvent(item.event.args.data);
+        if (event.__kind === "Create") {
+          const group = await ctx.store.get(Group, String(event.groupId));
+          smartContracts.push({
+            id: String(event.id),
+            address: ss58.codec(SS58_PREFIX).encode(event.smartContractAddress),
+            chain: event.chain,
+            caller: ss58.codec(SS58_PREFIX).encode(event.caller),
+            azeroId: event.azeroId,
+            abiUrl: event.abiUrl,
+            contractUrl: event.contractUrl,
+            wasmUrl: event.wasmUrl,
+            auditUrl: event.auditUrl,
+            group,
+            projectName: event.projectName,
+            projectWebsite: event.projectWebsite,
+            github: event.github
+          });
+        }
+      }
+    }
+  }
+  return smartContracts;
+}
+
+async function extractSmartContractsUpdate(ctx: Ctx): Promise<SmartContractUpdate[]> {
+  const smartContractsUpdate: SmartContractUpdate[] = [];
+  for (const block of ctx.blocks) {
+    for (const item of block.items) {
+      if (
+        item.name === "Contracts.ContractEmitted" &&
+        item.event.args.contract === SMART_CONTRACT_HUB_CONTRACT_ADDRESS
+      ) {
+        const event = azSmartContractHub.decodeEvent(item.event.args.data);
+        if (event.__kind === "Update") {
+          const group = await ctx.store.get(Group, String(event.groupId));
+          smartContractsUpdate.push({
+            id: String(event.id),
+            enabled: event.enabled,
+            azeroId: event.azeroId,
+            auditUrl: event.auditUrl,
+            group,
+            projectName: event.projectName,
+            projectWebsite: event.projectWebsite,
+            github: event.github,
+          });
+        }
+      }
+    }
+  }
+  return smartContractsUpdate;
 }

@@ -37,12 +37,6 @@ Update squid.yaml and deploy as per [this](https://docs.subsquid.io/deploy-squid
 sqd deploy --org btngroup ../squid-smart-contract-hub
 ```
 
-### Checking code
-
-```zsh
-npm run lint
-```
-
 ## Dev flow
 
 ### 1. Define database schema
@@ -79,6 +73,12 @@ See [docs on database migrations](https://docs.subsquid.io/basics/db-migrations)
 ```bash
 npx squid-ink-typegen --abi abi/az_groups.json --output src/abi/az_groups.ts
 npx squid-ink-typegen --abi abi/az_smart_contract_hub.json --output src/abi/az_smart_contract_hub.ts
+```
+
+### 5. Checking code
+
+```zsh
+npm run lint
 ```
 
 ## References

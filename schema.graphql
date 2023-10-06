@@ -10,3 +10,20 @@ type GroupUser @entity {
   accountId: String! @index
   role: String!
 }
+
+type SmartContract @entity {
+  id: ID!
+  address: String! @index
+  chain: Int!
+  caller: String! @index
+  enabled: Boolean!
+  azeroId: String! @index
+  abiUrl: String!
+  contractUrl: String
+  wasmUrl: String
+  auditUrl: String
+  group: Group
+  projectName: String
+  projectWebsite: String
+  github: String
+}
