@@ -1,6 +1,6 @@
 manifestVersion: subsquid.io/v0.1
 name: smart-contract-hub
-version: 1
+version: 2
 description: "Smart contract hub for Aleph Zero."
 build:
 deploy:
