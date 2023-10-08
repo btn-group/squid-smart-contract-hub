@@ -13,6 +13,7 @@ npm i -g @subsquid/cli
 ```
 
 ## Running locally
+### SQD
 ```bash
 # 1. Install dependencies
 npm ci
@@ -27,6 +28,12 @@ sqd process
 sqd serve
 
 # 5. Access via http://localhost:4350/graphql
+```
+### DOCKER
+```bash
+# https://docs.subsquid.io/deploy-squid/self-hosting/
+docker build . -t my-squid
+docker compose up
 ```
 
 ## Deployment
