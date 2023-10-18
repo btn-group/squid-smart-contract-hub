@@ -1,4 +1,5 @@
-import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_} from "typeorm"
+import {Entity as Entity_, Column as Column_, PrimaryColumn as PrimaryColumn_, OneToMany as OneToMany_} from "typeorm"
+import {GroupUser} from "./groupUser.model"
 
 @Entity_()
 export class Group {
@@ -14,4 +15,7 @@ export class Group {
 
     @Column_("bool", {nullable: false})
     enabled!: boolean
+
+    @OneToMany_(() => GroupUser, e => e.group)
+    groupUsers!: GroupUser[]
 }

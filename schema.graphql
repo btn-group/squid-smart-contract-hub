@@ -2,6 +2,7 @@ type Group @entity {
   id: ID!
   name: String!
   enabled: Boolean!
+  groupUsers: [GroupUser!] @derivedFrom(field: "group")
 }
 
 type GroupUser @entity {
