@@ -61,36 +61,22 @@ processor.run(new TypeormDatabase(), async (ctx) => {
     );
   }
 
-  // 3. Create new group users
-  const groupUsers = await extractGroupUsers(ctx);
-  const newGroupUsers = groupUsers.map((groupUser) => {
-    return new GroupUser({
-      id: groupUser.id,
-      group: groupUser.group,
-      accountId: groupUser.accountId,
-      role: groupUser.role,
-    });
-  });
-  await ctx.store.insert(newGroupUsers);
-
-  // 4. Update group users
-  const groupUsersUpdate = await extractGroupUsersUpdate(ctx);
-  for (const groupUser of groupUsersUpdate) {
-    await ctx.store.save(
-      new GroupUser({
-        id: groupUser.id,
-        group: groupUser.group,
-        accountId: groupUser.accountId,
-        role: groupUser.role,
-      }),
-    );
+  // 3. Process group user events (needs to be done this way as group users can be destroyed)
+  const groupUserEvents = await extractGroupUserEvents(ctx);
+  for (const groupUserEvent of groupUserEvents) {
+    if (groupUserEvent.action == 'destroy') {
+      await ctx.store.remove(GroupUser, groupUserEvent.id);
+    } else {
+      await ctx.store.save(
+        new GroupUser({
+          id: groupUserEvent.id,
+          group: groupUserEvent.group,
+          accountId: groupUserEvent.accountId,
+          role: groupUserEvent.role,
+        }),
+      );
+    }
   };
-
-  // 5. Delete group users
-  const groupUsersDestroy = extractGroupUsersDestroy(ctx);
-  if (groupUsersDestroy.length) {
-    await ctx.store.remove(GroupUser, groupUsersDestroy);
-  }
 
   // 6. Create new smart contracts
   const newSmartContracts = smartContracts.map((smartContract) => {
@@ -142,6 +128,7 @@ interface GroupUserEvent {
   group: Group;
   accountId: string;
   role: string;
+  action: string;
 }
 
 interface SmartContractCreateEvent {
@@ -215,7 +202,7 @@ function extractGroupsUpdate(ctx: Ctx): GroupEvent[] {
   return groups;
 }
 
-async function extractGroupUsers(ctx: Ctx): Promise<GroupUserEvent[]> {
+async function extractGroupUserEvents(ctx: Ctx): Promise<GroupUserEvent[]> {
   const groupUsers: GroupUserEvent[] = [];
   for (const block of ctx.blocks) {
     for (const item of block.items) {
@@ -223,6 +210,7 @@ async function extractGroupUsers(ctx: Ctx): Promise<GroupUserEvent[]> {
         item.name === "Contracts.ContractEmitted" &&
         item.event.args.contract === GROUPS_CONTRACT_ADDRESS
       ) {
+
         const event = azGroups.decodeEvent(item.event.args.data);
         if (event.__kind === "GroupUserCreate") {
           const group = await ctx.store.get(Group, String(event.groupId));
@@ -234,25 +222,10 @@ async function extractGroupUsers(ctx: Ctx): Promise<GroupUserEvent[]> {
               group,
               accountId: ss58.codec(SS58_PREFIX).encode(event.user),
               role: event.role.__kind,
+              action: "create"
             });
           }
-        }
-      }
-    }
-  }
-  return groupUsers;
-}
-
-async function extractGroupUsersUpdate(ctx: Ctx): Promise<GroupUserEvent[]> {
-  const groupUsers: GroupUserEvent[] = [];
-  for (const block of ctx.blocks) {
-    for (const item of block.items) {
-      if (
-        item.name === "Contracts.ContractEmitted" &&
-        item.event.args.contract === GROUPS_CONTRACT_ADDRESS
-      ) {
-        const event = azGroups.decodeEvent(item.event.args.data);
-        if (event.__kind === "GroupUserUpdate") {
+        } else if (event.__kind === "GroupUserUpdate") {
           const group = await ctx.store.get(Group, String(event.groupId));
           if (group) {
             groupUsers.push({
@@ -262,6 +235,20 @@ async function extractGroupUsersUpdate(ctx: Ctx): Promise<GroupUserEvent[]> {
               group,
               accountId: ss58.codec(SS58_PREFIX).encode(event.user),
               role: event.role.__kind,
+              action: "update"
+            });
+          }
+        } else if (event.__kind === "GroupUserDestroy") {
+          const group = await ctx.store.get(Group, String(event.groupId));
+          if (group) {
+            groupUsers.push({
+              id: `${event.groupId}-${ss58
+                .codec(SS58_PREFIX)
+                .encode(event.user)}`,
+              group,
+              accountId: ss58.codec(SS58_PREFIX).encode(event.user),
+              role: "destroy",
+              action: "destroy"
             });
           }
         }
@@ -269,26 +256,6 @@ async function extractGroupUsersUpdate(ctx: Ctx): Promise<GroupUserEvent[]> {
     }
   }
   return groupUsers;
-}
-
-function extractGroupUsersDestroy(ctx: Ctx): string[] {
-  const groupUserIds: string[] = [];
-  for (const block of ctx.blocks) {
-    for (const item of block.items) {
-      if (
-        item.name === "Contracts.ContractEmitted" &&
-        item.event.args.contract === GROUPS_CONTRACT_ADDRESS
-      ) {
-        const event = azGroups.decodeEvent(item.event.args.data);
-        if (event.__kind === "GroupUserDestroy") {
-          groupUserIds.push(
-            `${event.groupId}-${ss58.codec(SS58_PREFIX).encode(event.user)}`,
-          );
-        }
-      }
-    }
-  }
-  return groupUserIds;
 }
 
 async function extractSmartContracts(ctx: Ctx): Promise<SmartContractCreateEvent[]> {
