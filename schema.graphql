@@ -3,6 +3,7 @@ type Group @entity {
   name: String!
   enabled: Boolean!
   groupUsers: [GroupUser!] @derivedFrom(field: "group")
+  createdAt: DateTime!
 }
 
 type GroupUser @entity {
@@ -27,4 +28,5 @@ type SmartContract @entity {
   projectName: String
   projectWebsite: String
   github: String
+  createdAt: DateTime!
 }
