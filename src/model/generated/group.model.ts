@@ -18,4 +18,7 @@ export class Group {
 
     @OneToMany_(() => GroupUser, e => e.group)
     groupUsers!: GroupUser[]
+
+    @Column_("timestamp with time zone", {nullable: false})
+    createdAt!: Date
 }

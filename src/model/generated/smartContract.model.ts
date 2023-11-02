@@ -52,4 +52,7 @@ export class SmartContract {
 
     @Column_("text", {nullable: true})
     github!: string | undefined | null
+
+    @Column_("timestamp with time zone", {nullable: false})
+    createdAt!: Date
 }

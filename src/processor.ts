@@ -50,15 +50,21 @@ processor.run(new TypeormDatabase(), async (ctx) => {
       id: group.id,
       name: group.name,
       enabled: true,
+      createdAt: group.created_at
     });
   });
   await ctx.store.insert(newGroups);
 
   // 2. Update groups
-  for (const group of groupsUpdate) {
-    await ctx.store.save(
-      new Group({ id: group.id, name: group.name, enabled: group.enabled }),
-    );
+  for (const gu of groupsUpdate) {
+    const group = await ctx.store.get(Group, gu.id);
+    if (group) {
+      group.name = gu.name;
+      group.enabled = gu.enabled;
+      await ctx.store.save(
+        group
+      );
+    }
   }
 
   // 3. Process group user events (needs to be done this way as group users can be destroyed)
@@ -95,6 +101,7 @@ processor.run(new TypeormDatabase(), async (ctx) => {
       projectName: smartContract.projectName,
       projectWebsite: smartContract.projectWebsite,
       github: smartContract.github,
+      createdAt: smartContract.created_at
     });
   });
   await ctx.store.insert(newSmartContracts);
@@ -121,6 +128,7 @@ interface GroupEvent {
   id: string;
   name: string;
   enabled: boolean;
+  created_at?: Date;
 }
 
 interface GroupUserEvent {
@@ -145,6 +153,7 @@ interface SmartContractCreateEvent {
   projectName?: string,
   projectWebsite?: string,
   github?: string,
+  created_at: Date
 }
 
 interface SmartContractUpdate {
@@ -172,6 +181,7 @@ function extractGroups(ctx: Ctx): GroupEvent[] {
             id: String(event.id),
             name: event.name,
             enabled: true,
+            created_at: new Date(block.header.timestamp),
           });
         }
       }
@@ -282,7 +292,8 @@ async function extractSmartContracts(ctx: Ctx): Promise<SmartContractCreateEvent
             group,
             projectName: event.projectName,
             projectWebsite: event.projectWebsite,
-            github: event.github
+            github: event.github,
+            created_at: new Date(block.header.timestamp),
           });
         }
       }
