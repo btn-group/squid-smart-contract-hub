@@ -12,16 +12,16 @@ import * as azSmartContractHub from "./abi/az_smart_contract_hub";
 import { Group, GroupUser, SmartContract } from "./model/generated";
 
 const GROUPS_CONTRACT_ADDRESS_SS58 =
-  "5EHMGoUrkSHCBqLYmAMbzBeXJwZzeGLVXgpWw585j8ciyrte";
+  "5HMYuwaZt2F9L7VaS89Z8w4EZ2Azu2SoFthaeE6YTHEBD7dg";
 const GROUPS_CONTRACT_ADDRESS = toHex(ss58.decode(GROUPS_CONTRACT_ADDRESS_SS58).bytes);
 const SMART_CONTRACT_HUB_CONTRACT_ADDRESS_SS58 =
-  "5DnHpTfNHYQE7YB6PV3D7DPL8gVSfqUd6mwCKzuYgHgqPtS3";
+  "5DHxiJXTEtgf4yuSMw8mhnwjTn11ME77wwBSU6rVjg8bszKQ";
 const SMART_CONTRACT_HUB_CONTRACT_ADDRESS = toHex(ss58.decode(SMART_CONTRACT_HUB_CONTRACT_ADDRESS_SS58).bytes);
 const SS58_PREFIX = ss58.decode(GROUPS_CONTRACT_ADDRESS_SS58).prefix;
 
 const processor = new SubstrateBatchProcessor()
   .setDataSource({
-    archive: lookupArchive("aleph-zero-testnet", { release: "FireSquid" }),
+    archive: lookupArchive("aleph-zero", { release: "FireSquid" }),
   })
   .addContractsContractEmitted(GROUPS_CONTRACT_ADDRESS, {
     data: {
