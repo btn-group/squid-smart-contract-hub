@@ -89,3 +89,4 @@ npm run lint
 3. [Entity relations](https://docs.subsquid.io/store/postgres/schema-file/entity-relations/)
 4. [Project conventions](https://docs.subsquid.io/basics/squid-structure)
 5. [Graphql JSON body converter]https://datafetcher.com/graphql-json-body-converter
+6. [Squid Ink template (Arrowsquid)](https://github.com/subsquid-labs/squid-ink-template/tree/master)

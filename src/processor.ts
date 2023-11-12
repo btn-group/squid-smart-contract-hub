@@ -1,15 +1,23 @@
+import assert from 'assert';
 import { lookupArchive } from "@subsquid/archive-registry";
 import * as ss58 from "@subsquid/ss58";
 import { toHex } from "@subsquid/util-internal-hex";
 import {
-  BatchContext,
-  BatchProcessorItem,
+  BlockHeader,
+  DataHandlerContext,
+  Event as _Event,
   SubstrateBatchProcessor,
+  SubstrateBatchProcessorFields,
 } from "@subsquid/substrate-processor";
 import { Store, TypeormDatabase } from "@subsquid/typeorm-store";
 import * as azGroups from "./abi/az_groups";
 import * as azSmartContractHub from "./abi/az_smart_contract_hub";
 import { Group, GroupUser, SmartContract } from "./model/generated";
+
+export type Block = BlockHeader<Fields>
+export type Event = _Event<Fields>
+export type Fields = SubstrateBatchProcessorFields<typeof processor>
+export type ProcessorContext<Store> = DataHandlerContext<Store, Fields>
 
 const GROUPS_CONTRACT_ADDRESS_SS58 =
   "5HMYuwaZt2F9L7VaS89Z8w4EZ2Azu2SoFthaeE6YTHEBD7dg";
@@ -21,24 +29,28 @@ const SS58_PREFIX = ss58.decode(GROUPS_CONTRACT_ADDRESS_SS58).prefix;
 
 const processor = new SubstrateBatchProcessor()
   .setDataSource({
-    archive: lookupArchive("aleph-zero", { release: "FireSquid" }),
+    archive: lookupArchive('aleph-zero', {release: 'ArrowSquid'}),
+    chain: {
+      url: process.env.RPC_ENDPOINT,
+      rateLimit: 10
+    }
   })
-  .addContractsContractEmitted(GROUPS_CONTRACT_ADDRESS, {
-    data: {
-      event: { args: true },
-    },
-  } as const)
-  .addContractsContractEmitted(SMART_CONTRACT_HUB_CONTRACT_ADDRESS, {
-    data: {
-      event: { args: true },
-    },
-  } as const);
-
-type Item = BatchProcessorItem<typeof processor>;
-type Ctx = BatchContext<Store, Item>;
+  .addContractsContractEmitted({
+    contractAddress: [GROUPS_CONTRACT_ADDRESS, SMART_CONTRACT_HUB_CONTRACT_ADDRESS]
+  })
+  .setFields({
+      block: {
+          timestamp: true
+      }
+  })
+  .setBlockRange({
+    // genesis block happens to not have a timestamp, so it's easier
+    // to start from 1 in cases when the deployment height is unknown
+    from: 1
+  })
 
 // 1. The aim is to get groups for an account
-processor.run(new TypeormDatabase(), async (ctx) => {
+processor.run(new TypeormDatabase({supportHotBlocks: true}), async ctx => {
   const groups = extractGroups(ctx);
   const groupsUpdate = extractGroupsUpdate(ctx);
   const smartContracts = await extractSmartContracts(ctx);
@@ -167,19 +179,20 @@ interface SmartContractUpdate {
   github?: string,
 }
 
-function extractGroups(ctx: Ctx): GroupEvent[] {
+function extractGroups(ctx: ProcessorContext<Store>): GroupEvent[] {
   const groups: GroupEvent[] = [];
   for (const block of ctx.blocks) {
-    for (const item of block.items) {
+    assert(block.header.timestamp, `Block ${block.header.height} had no timestamp`)
+    for (const event of block.events) {
       if (
-        item.name === "Contracts.ContractEmitted" &&
-        item.event.args.contract === GROUPS_CONTRACT_ADDRESS
+        event.name === "Contracts.ContractEmitted" &&
+        event.args.contract === GROUPS_CONTRACT_ADDRESS
       ) {
-        const event = azGroups.decodeEvent(item.event.args.data);
-        if (event.__kind === "Create") {
+        const decodedEvent = azGroups.decodeEvent(event.args.data);
+        if (decodedEvent.__kind === "Create") {
           groups.push({
-            id: String(event.id),
-            name: event.name,
+            id: String(decodedEvent.id),
+            name: decodedEvent.name,
             enabled: true,
             created_at: new Date(block.header.timestamp),
           });
@@ -190,20 +203,21 @@ function extractGroups(ctx: Ctx): GroupEvent[] {
   return groups;
 }
 
-function extractGroupsUpdate(ctx: Ctx): GroupEvent[] {
+function extractGroupsUpdate(ctx: ProcessorContext<Store>): GroupEvent[] {
   const groups: GroupEvent[] = [];
   for (const block of ctx.blocks) {
-    for (const item of block.items) {
+    assert(block.header.timestamp, `Block ${block.header.height} had no timestamp`)
+    for (const event of block.events) {
       if (
-        item.name === "Contracts.ContractEmitted" &&
-        item.event.args.contract === GROUPS_CONTRACT_ADDRESS
+        event.name === "Contracts.ContractEmitted" &&
+        event.args.contract === GROUPS_CONTRACT_ADDRESS
       ) {
-        const event = azGroups.decodeEvent(item.event.args.data);
-        if (event.__kind === "Update") {
+        const decodedEvent = azGroups.decodeEvent(event.args.data);
+        if (decodedEvent.__kind === "Update") {
           groups.push({
-            id: String(event.id),
-            name: event.name,
-            enabled: event.enabled,
+            id: String(decodedEvent.id),
+            name: decodedEvent.name,
+            enabled: decodedEvent.enabled,
           });
         }
       }
@@ -212,51 +226,52 @@ function extractGroupsUpdate(ctx: Ctx): GroupEvent[] {
   return groups;
 }
 
-async function extractGroupUserEvents(ctx: Ctx): Promise<GroupUserEvent[]> {
+async function extractGroupUserEvents(ctx: ProcessorContext<Store>): Promise<GroupUserEvent[]> {
   const groupUsers: GroupUserEvent[] = [];
   for (const block of ctx.blocks) {
-    for (const item of block.items) {
+    assert(block.header.timestamp, `Block ${block.header.height} had no timestamp`)
+    for (const event of block.events) {
       if (
-        item.name === "Contracts.ContractEmitted" &&
-        item.event.args.contract === GROUPS_CONTRACT_ADDRESS
+        event.name === "Contracts.ContractEmitted" &&
+        event.args.contract === GROUPS_CONTRACT_ADDRESS
       ) {
 
-        const event = azGroups.decodeEvent(item.event.args.data);
-        if (event.__kind === "GroupUserCreate") {
-          const group = await ctx.store.get(Group, String(event.groupId));
+        const decodedEvent = azGroups.decodeEvent(event.args.data);
+        if (decodedEvent.__kind === "GroupUserCreate") {
+          const group = await ctx.store.get(Group, String(decodedEvent.groupId));
           if (group) {
             groupUsers.push({
-              id: `${event.groupId}-${ss58
+              id: `${decodedEvent.groupId}-${ss58
                 .codec(SS58_PREFIX)
-                .encode(event.user)}`,
+                .encode(decodedEvent.user)}`,
               group,
-              accountId: ss58.codec(SS58_PREFIX).encode(event.user),
-              role: event.role.__kind,
+              accountId: ss58.codec(SS58_PREFIX).encode(decodedEvent.user),
+              role: decodedEvent.role.__kind,
               action: "create"
             });
           }
-        } else if (event.__kind === "GroupUserUpdate") {
-          const group = await ctx.store.get(Group, String(event.groupId));
+        } else if (decodedEvent.__kind === "GroupUserUpdate") {
+          const group = await ctx.store.get(Group, String(decodedEvent.groupId));
           if (group) {
             groupUsers.push({
-              id: `${event.groupId}-${ss58
+              id: `${decodedEvent.groupId}-${ss58
                 .codec(SS58_PREFIX)
-                .encode(event.user)}`,
+                .encode(decodedEvent.user)}`,
               group,
-              accountId: ss58.codec(SS58_PREFIX).encode(event.user),
-              role: event.role.__kind,
+              accountId: ss58.codec(SS58_PREFIX).encode(decodedEvent.user),
+              role: decodedEvent.role.__kind,
               action: "update"
             });
           }
-        } else if (event.__kind === "GroupUserDestroy") {
-          const group = await ctx.store.get(Group, String(event.groupId));
+        } else if (decodedEvent.__kind === "GroupUserDestroy") {
+          const group = await ctx.store.get(Group, String(decodedEvent.groupId));
           if (group) {
             groupUsers.push({
-              id: `${event.groupId}-${ss58
+              id: `${decodedEvent.groupId}-${ss58
                 .codec(SS58_PREFIX)
-                .encode(event.user)}`,
+                .encode(decodedEvent.user)}`,
               group,
-              accountId: ss58.codec(SS58_PREFIX).encode(event.user),
+              accountId: ss58.codec(SS58_PREFIX).encode(decodedEvent.user),
               role: "destroy",
               action: "destroy"
             });
@@ -268,31 +283,32 @@ async function extractGroupUserEvents(ctx: Ctx): Promise<GroupUserEvent[]> {
   return groupUsers;
 }
 
-async function extractSmartContracts(ctx: Ctx): Promise<SmartContractCreateEvent[]> {
+async function extractSmartContracts(ctx: ProcessorContext<Store>): Promise<SmartContractCreateEvent[]> {
   const smartContracts: SmartContractCreateEvent[] = [];
   for (const block of ctx.blocks) {
-    for (const item of block.items) {
+    assert(block.header.timestamp, `Block ${block.header.height} had no timestamp`)
+    for (const event of block.events) {
       if (
-        item.name === "Contracts.ContractEmitted" &&
-        item.event.args.contract === SMART_CONTRACT_HUB_CONTRACT_ADDRESS
+        event.name === "Contracts.ContractEmitted" &&
+        event.args.contract === SMART_CONTRACT_HUB_CONTRACT_ADDRESS
       ) {
-        const event = azSmartContractHub.decodeEvent(item.event.args.data);
-        if (event.__kind === "Create") {
-          const group = await ctx.store.get(Group, String(event.groupId));
+        const decodedEvent = azSmartContractHub.decodeEvent(event.args.data);
+        if (decodedEvent.__kind === "Create") {
+          const group = await ctx.store.get(Group, String(decodedEvent.groupId));
           smartContracts.push({
-            id: String(event.id),
-            address: ss58.codec(SS58_PREFIX).encode(event.smartContractAddress),
-            chain: event.chain,
-            caller: ss58.codec(SS58_PREFIX).encode(event.caller),
-            azeroId: event.azeroId,
-            abiUrl: event.abiUrl,
-            contractUrl: event.contractUrl,
-            wasmUrl: event.wasmUrl,
-            auditUrl: event.auditUrl,
+            id: String(decodedEvent.id),
+            address: ss58.codec(SS58_PREFIX).encode(decodedEvent.smartContractAddress),
+            chain: decodedEvent.chain,
+            caller: ss58.codec(SS58_PREFIX).encode(decodedEvent.caller),
+            azeroId: decodedEvent.azeroId,
+            abiUrl: decodedEvent.abiUrl,
+            contractUrl: decodedEvent.contractUrl,
+            wasmUrl: decodedEvent.wasmUrl,
+            auditUrl: decodedEvent.auditUrl,
             group,
-            projectName: event.projectName,
-            projectWebsite: event.projectWebsite,
-            github: event.github,
+            projectName: decodedEvent.projectName,
+            projectWebsite: decodedEvent.projectWebsite,
+            github: decodedEvent.github,
             created_at: new Date(block.header.timestamp),
           });
         }
@@ -302,26 +318,27 @@ async function extractSmartContracts(ctx: Ctx): Promise<SmartContractCreateEvent
   return smartContracts;
 }
 
-async function extractSmartContractsUpdate(ctx: Ctx): Promise<SmartContractUpdate[]> {
+async function extractSmartContractsUpdate(ctx: ProcessorContext<Store>): Promise<SmartContractUpdate[]> {
   const smartContractsUpdate: SmartContractUpdate[] = [];
   for (const block of ctx.blocks) {
-    for (const item of block.items) {
+    assert(block.header.timestamp, `Block ${block.header.height} had no timestamp`)
+    for (const event of block.events) {
       if (
-        item.name === "Contracts.ContractEmitted" &&
-        item.event.args.contract === SMART_CONTRACT_HUB_CONTRACT_ADDRESS
+        event.name === "Contracts.ContractEmitted" &&
+        event.args.contract === SMART_CONTRACT_HUB_CONTRACT_ADDRESS
       ) {
-        const event = azSmartContractHub.decodeEvent(item.event.args.data);
-        if (event.__kind === "Update") {
-          const group = await ctx.store.get(Group, String(event.groupId));
+        const decodedEvent = azSmartContractHub.decodeEvent(event.args.data);
+        if (decodedEvent.__kind === "Update") {
+          const group = await ctx.store.get(Group, String(decodedEvent.groupId));
           smartContractsUpdate.push({
-            id: String(event.id),
-            enabled: event.enabled,
-            azeroId: event.azeroId,
-            auditUrl: event.auditUrl,
+            id: String(decodedEvent.id),
+            enabled: decodedEvent.enabled,
+            azeroId: decodedEvent.azeroId,
+            auditUrl: decodedEvent.auditUrl,
             group,
-            projectName: event.projectName,
-            projectWebsite: event.projectWebsite,
-            github: event.github,
+            projectName: decodedEvent.projectName,
+            projectWebsite: decodedEvent.projectWebsite,
+            github: decodedEvent.github,
           });
         }
       }
