@@ -31,7 +31,7 @@ const processor = new SubstrateBatchProcessor()
   .setDataSource({
     archive: lookupArchive('aleph-zero', {release: 'ArrowSquid'}),
     chain: {
-      url: process.env.RPC_ENDPOINT,
+      url: "wss://ws.azero.dev",
       rateLimit: 10
     }
   })
